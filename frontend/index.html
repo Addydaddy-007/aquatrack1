@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aquatrack Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #e2e8f0; }
+        .glass-panel { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(6, 182, 212, 0.2); }
+        .input-floating:focus-within label, .input-floating input:not(:placeholder-shown) + label, .input-floating textarea:not(:placeholder-shown) + label { transform: translateY(-1.5rem) scale(0.85); color: #22d3ee; }
+        .chart-container { position: relative; height: 300px; width: 100%; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .toast-enter { animation: slideIn 0.3s ease-out forwards; }
+        .toast-exit { animation: fadeOut 0.3s ease-out forwards; }
+        .view-section { animation: fadeIn 0.4s ease-out forwards; }
+        .logo-img { box-shadow: 0 0 20px rgba(6, 182, 212, 0.4); border: 2px solid #22d3ee; }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden">
+    
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-3"></div>
+
+    <!-- Login Overlay -->
+    <div id="login-view" class="fixed inset-0 z-[100] bg-slate-900/95 backdrop-blur-xl flex flex-col items-center justify-center">
+        <div class="glass-panel p-8 rounded-3xl w-full max-w-md shadow-2xl border-cyan-500/30">
+            <div class="flex justify-center mb-6">
+                <!-- Added Realistic Logo Image -->
+                <svg viewBox="0 0 100 100" class="w-24 h-24 rounded-full logo-img bg-slate-900" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <linearGradient id="dropGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#22d3ee" />
+            <stop offset="100%" stop-color="#0369a1" />
+        </linearGradient>
+    </defs>
+    <circle cx="50" cy="50" r="48" fill="#0f172a" />
+    <path d="M50 18 C50 18, 25 50, 25 70 A25 25 0 0 0 75 70 C75 50, 50 18, 50 18 Z" fill="url(#dropGrad)" opacity="0.9"/>
+    <polyline points="32,70 42,58 52,65 65,48" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="65" cy="48" r="3" fill="#ffffff"/>
+</svg>
+            </div>
+            <h2 class="text-3xl font-bold text-white mb-2 text-center tracking-wide">AQUATRACK</h2>
+            <p class="text-slate-400 text-center mb-3 text-sm">Select a demo portal to continue</p>
+            <p class="text-amber-300 text-xs text-center mb-5">DEMO MODE · Data is saved in this browser only</p>
+            
+            <div class="space-y-4">
+                <button id="btn-resident" class="w-full flex items-center justify-between group bg-slate-800/80 hover:bg-slate-700 text-white py-4 px-6 rounded-xl border border-slate-600 transition-all">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="home" class="text-slate-400 group-hover:text-white transition-colors"></i>
+                        <div class="text-left"><p class="font-bold">Resident Portal</p><p class="text-xs text-slate-400 group-hover:text-slate-300">View stats & submit requests</p></div>
+                    </div>
+                    <i data-lucide="arrow-right" class="w-5 h-5 text-slate-500 group-hover:text-white transform group-hover:translate-x-1 transition-all"></i>
+                </button>
+                
+                <button id="btn-staff" class="w-full flex items-center justify-between group bg-gradient-to-r from-cyan-900/80 to-blue-900/80 hover:from-cyan-800 hover:to-blue-800 text-white py-4 px-6 rounded-xl border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.15)] transition-all">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="shield-check" class="text-cyan-400 group-hover:text-cyan-300 transition-colors"></i>
+                        <div class="text-left"><p class="font-bold">Staff / Admin Portal</p><p class="text-xs text-cyan-200/60 group-hover:text-cyan-100">Full system control & inbox</p></div>
+                    </div>
+                    <i data-lucide="arrow-right" class="w-5 h-5 text-cyan-500 group-hover:text-cyan-300 transform group-hover:translate-x-1 transition-all"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <aside class="w-64 glass-panel border-r border-slate-700 flex flex-col z-10 hidden" id="main-sidebar">
+        <div class="p-6 flex items-center gap-3 border-b border-slate-700/50">
+            <svg viewBox="0 0 100 100" class="w-10 h-10 rounded-full logo-img bg-slate-900" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <linearGradient id="dropGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#22d3ee" />
+            <stop offset="100%" stop-color="#0369a1" />
+        </linearGradient>
+    </defs>
+    <circle cx="50" cy="50" r="48" fill="#0f172a" />
+    <path d="M50 18 C50 18, 25 50, 25 70 A25 25 0 0 0 75 70 C75 50, 50 18, 50 18 Z" fill="url(#dropGrad2)" opacity="0.9"/>
+    <polyline points="32,70 42,58 52,65 65,48" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="65" cy="48" r="3" fill="#ffffff"/>
+</svg>
+            <h1 class="text-xl font-bold text-white tracking-wider">AQUATRACK</h1>
+        </div>
+        <nav class="flex-1 px-4 space-y-2 mt-6" id="sidebar-nav">
+            <a href="#" data-target="dashboard" class="nav-link active flex items-center gap-3 px-4 py-3 bg-cyan-900/40 text-cyan-400 rounded-lg border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.15)] transition-all">
+                <i data-lucide="layout-dashboard"></i> Dashboard
+            </a>
+            <a href="#" data-target="water-levels" class="nav-link flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800/80 rounded-lg transition-all">
+                <i data-lucide="database"></i> Water Levels
+            </a>
+            <a href="#" data-target="maintenance" class="nav-link flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800/80 rounded-lg transition-all">
+                <i data-lucide="clipboard-list"></i> Maintenance
+            </a>
+            
+            <!-- Role Specific Nav Items -->
+            <a href="#" data-target="requests" id="nav-requests" class="nav-link resident-only flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800/80 rounded-lg transition-all hidden">
+                <i data-lucide="message-square"></i> Help / Requests
+            </a>
+            <a href="#" data-target="inbox" id="nav-inbox" class="nav-link staff-only flex items-center justify-between px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800/80 rounded-lg transition-all hidden">
+                <div class="flex items-center gap-3"><i data-lucide="inbox"></i> Staff Inbox</div>
+                <span class="bg-red-500/20 text-red-400 text-xs font-bold px-2 py-0.5 rounded-full">2</span>
+            </a>
+        </nav>
+        <div class="p-4 border-t border-slate-700/50">
+            <div class="flex items-center justify-between px-4 py-3 text-slate-400 cursor-pointer hover:text-white transition-colors">
+                <div class="flex items-center gap-3">
+                    <i data-lucide="user-circle"></i>
+                    <span class="text-sm font-medium" id="profile-name">User</span>
+                </div>
+                <button id="btn-logout" class="text-slate-500 hover:text-red-400" title="Logout"><i data-lucide="log-out" class="w-4 h-4"></i></button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-y-auto p-8 relative hidden" id="main-content">
+        <div class="absolute top-0 left-0 w-full h-96 bg-cyan-900/20 blur-3xl -z-10 rounded-full pointer-events-none transform -translate-y-1/2"></div>
+        
+        <!-- DASHBOARD VIEW -->
+        <div id="view-dashboard" class="view-section block">
+            <header class="flex justify-between items-center mb-8">
+                <div>
+                    <h2 class="text-3xl font-bold text-white mb-1">System Overview</h2>
+                    <p class="text-slate-400 text-sm">Monitor rainwater harvesting metrics in real-time.</p>
+                </div>
+                <button id="new-log-btn" class="staff-only bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold py-2.5 px-5 rounded-lg shadow-[0_0_15px_rgba(6,182,212,0.4)] flex items-center gap-2 transition-all transform hover:scale-105 active:scale-95 hidden">
+                    <i data-lucide="plus" class="w-5 h-5"></i> New Log
+                </button>
+            </header>
+
+            <!-- Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="glass-panel p-6 rounded-2xl shadow-lg relative overflow-hidden group">
+                    <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <i data-lucide="container" class="w-24 h-24 text-cyan-400"></i>
+                    </div>
+                    <div class="relative z-10 flex justify-between items-start mb-2">
+                        <div>
+                            <p class="text-slate-400 text-sm font-medium uppercase tracking-wider">Total Capacity</p>
+                            <h3 class="text-4xl font-bold text-white mt-2">150,000 <span class="text-xl text-cyan-400">L</span></h3>
+                        </div>
+                        <div class="p-3 bg-slate-800 rounded-xl text-cyan-400 border border-slate-700 shadow-inner">
+                            <i data-lucide="container"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-6 rounded-2xl shadow-lg relative overflow-hidden group">
+                    <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <i data-lucide="waves" class="w-24 h-24 text-blue-400"></i>
+                    </div>
+                    <div class="relative z-10 flex justify-between items-start mb-2">
+                        <div>
+                            <p class="text-slate-400 text-sm font-medium uppercase tracking-wider">Current Level</p>
+                            <h3 class="text-4xl font-bold text-white mt-2" id="current-level-text">82<span class="text-xl text-blue-400">%</span></h3>
+                        </div>
+                        <div class="p-3 bg-slate-800 rounded-xl text-blue-400 border border-slate-700 shadow-inner">
+                            <i data-lucide="waves"></i>
+                        </div>
+                    </div>
+                    <div class="relative z-10 mt-4 w-full bg-slate-700 rounded-full h-2">
+                        <div id="level-bar" class="bg-gradient-to-r from-blue-500 to-cyan-400 h-2 rounded-full shadow-[0_0_10px_rgba(56,189,248,0.6)] transition-all duration-1000 ease-out" style="width: 82%"></div>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-6 rounded-2xl shadow-lg relative overflow-hidden group">
+                    <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <i data-lucide="wrench" class="w-24 h-24 text-emerald-400"></i>
+                    </div>
+                    <div class="relative z-10 flex justify-between items-start mb-2">
+                        <div>
+                            <p class="text-slate-400 text-sm font-medium uppercase tracking-wider">Last Maintenance</p>
+                            <h3 class="text-4xl font-bold text-white mt-2" id="maintenance-text">3 <span class="text-xl text-emerald-400">Days</span></h3>
+                        </div>
+                        <div class="p-3 bg-slate-800 rounded-xl text-emerald-400 border border-slate-700 shadow-inner cursor-pointer hover:bg-slate-700 transition-colors" id="maintenance-btn" title="View Details">
+                            <i data-lucide="wrench"></i>
+                        </div>
+                    </div>
+                    <div class="relative z-10 mt-4 text-sm text-slate-400 flex items-center gap-1">
+                        <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i> All systems operational
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chart & Form -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8" id="dashboard-grid">
+                <!-- Chart Container (expands to col-span-3 for residents) -->
+                <div class="lg:col-span-2 glass-panel p-6 rounded-2xl shadow-lg flex flex-col transition-all" id="chart-panel">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xl font-bold text-white">Water Level Trends</h3>
+                        <select id="timeframe-select" class="bg-slate-800 text-slate-300 border border-slate-600 rounded-lg px-3 py-1 text-sm outline-none focus:border-cyan-400 cursor-pointer">
+                            <option value="7">Last 7 Days</option>
+                            <option value="30">Last 30 Days</option>
+                        </select>
+                    </div>
+                    <div class="chart-container flex-1 w-full min-h-[300px]">
+                        <canvas id="waterChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Update Form (Staff Only) -->
+                <div class="staff-only glass-panel p-6 rounded-2xl shadow-lg flex flex-col hidden" id="quick-update-panel">
+                    <h3 class="text-xl font-bold text-white mb-6">Quick Update</h3>
+                    <form id="update-form" class="space-y-6 flex-1 flex flex-col">
+                        <div class="relative input-floating pt-2">
+                            <input type="number" id="level" required min="0" max="150000" class="w-full bg-slate-800/50 border border-slate-600 rounded-xl px-4 py-3.5 text-white focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-all peer" placeholder=" ">
+                            <label for="level" class="absolute left-4 top-5 text-slate-400 transition-all pointer-events-none">Current Volume (Liters)</label>
+                        </div>
+                        <div class="relative input-floating pt-2">
+                            <input type="text" id="notes" class="w-full bg-slate-800/50 border border-slate-600 rounded-xl px-4 py-3.5 text-white focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-all peer" placeholder=" ">
+                            <label for="notes" class="absolute left-4 top-5 text-slate-400 transition-all pointer-events-none">Log Notes (Optional)</label>
+                        </div>
+                        <div class="mt-auto pt-4">
+                            <button type="submit" class="w-full bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 text-white font-bold py-3.5 rounded-xl shadow-lg hover:shadow-cyan-500/25 transition-all transform hover:-translate-y-0.5 active:scale-95 flex items-center justify-center gap-2">
+                                <i data-lucide="save" class="w-5 h-5"></i> Update System
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- WATER LEVELS VIEW -->
+        <div id="view-water-levels" class="view-section hidden">
+            <header class="mb-8 flex justify-between items-end">
+                <div>
+                    <h2 class="text-3xl font-bold text-white mb-1">Water Levels Database</h2>
+                    <p class="text-slate-400 text-sm">Historical logs and capacity readings.</p>
+                </div>
+                <button id="export-csv-btn" class="bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-cyan-500/30 font-bold py-2.5 px-5 rounded-lg shadow-lg flex items-center gap-2 transition-all">
+                    <i data-lucide="download" class="w-4 h-4"></i> Export CSV
+                </button>
+            </header>
+            
+            <div class="glass-panel rounded-2xl shadow-lg overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse" id="data-table">
+                        <thead>
+                            <tr class="bg-slate-800/50 border-b border-slate-700">
+                                <th class="p-4 text-slate-400 font-medium text-sm">Date & Time</th>
+                                <th class="p-4 text-slate-400 font-medium text-sm">Volume (L)</th>
+                                <th class="p-4 text-slate-400 font-medium text-sm">Capacity %</th>
+                                <th class="p-4 text-slate-400 font-medium text-sm">Logged By</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-700/50" id="water-log-table">
+                            <tr class="hover:bg-slate-800/30 transition-colors">
+                                <td class="p-4 text-slate-300">Today, 10:30 AM</td>
+                                <td class="p-4 text-white font-medium">123000</td>
+                                <td class="p-4 text-blue-400">82%</td>
+                                <td class="p-4 text-slate-400">System API</td>
+                            </tr>
+                            <tr class="hover:bg-slate-800/30 transition-colors">
+                                <td class="p-4 text-slate-300">Yesterday, 06:15 PM</td>
+                                <td class="p-4 text-white font-medium">122000</td>
+                                <td class="p-4 text-blue-400">81%</td>
+                                <td class="p-4 text-slate-400">Admin User</td>
+                            </tr>
+                            <tr class="hover:bg-slate-800/30 transition-colors">
+                                <td class="p-4 text-slate-300">Oct 24, 09:00 AM</td>
+                                <td class="p-4 text-white font-medium">128000</td>
+                                <td class="p-4 text-blue-400">85%</td>
+                                <td class="p-4 text-slate-400">System API</td>
+                            </tr>
+                            <tr class="hover:bg-slate-800/30 transition-colors">
+                                <td class="p-4 text-slate-300">Oct 23, 08:45 AM</td>
+                                <td class="p-4 text-white font-medium">134000</td>
+                                <td class="p-4 text-blue-400">89%</td>
+                                <td class="p-4 text-slate-400">System API</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- MAINTENANCE VIEW -->
+        <div id="view-maintenance" class="view-section hidden">
+            <header class="flex justify-between items-center mb-8">
+                <div>
+                    <h2 class="text-3xl font-bold text-white mb-1">Maintenance & Service</h2>
+                    <p class="text-slate-400 text-sm">Track filtration changes and tank cleanings.</p>
+                </div>
+                <button id="log-service-btn" class="staff-only bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-5 rounded-lg shadow-lg flex items-center gap-2 transition-all hidden">
+                    <i data-lucide="wrench" class="w-5 h-5"></i> Log Service
+                </button>
+            </header>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="maintenance-grid">
+                <!-- Card 1 -->
+                <div class="glass-panel p-6 rounded-2xl shadow-lg border-l-4 border-l-emerald-500">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 class="text-lg font-bold text-white">Filter Replacement</h3>
+                            <p class="text-slate-400 text-sm">3 Days Ago • Oct 22, 2026</p>
+                        </div>
+                        <span class="px-3 py-1 bg-emerald-500/10 text-emerald-400 text-xs font-bold rounded-full border border-emerald-500/20">COMPLETED</span>
+                    </div>
+                    <p class="text-slate-300 text-sm mb-4">Replaced primary mesh filters and flushed the sedimentation tank. Next replacement due in 3 months.</p>
+                    <div class="flex items-center gap-2 text-sm text-slate-400">
+                        <i data-lucide="user" class="w-4 h-4"></i> Tech: Rajesh Kumar
+                    </div>
+                </div>
+
+                <!-- Card 2 -->
+                <div class="glass-panel p-6 rounded-2xl shadow-lg border-l-4 border-l-amber-500">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 class="text-lg font-bold text-white">Tank Inspection</h3>
+                            <p class="text-slate-400 text-sm">Scheduled for Next Week</p>
+                        </div>
+                        <span class="px-3 py-1 bg-amber-500/10 text-amber-400 text-xs font-bold rounded-full border border-amber-500/20">PENDING</span>
+                    </div>
+                    <p class="text-slate-300 text-sm mb-4">Routine structural inspection of the main 150,000L holding tank. Check for micro-fractures.</p>
+                    <div class="flex items-center gap-2 text-sm text-slate-400">
+                        <i data-lucide="calendar" class="w-4 h-4"></i> Due: Nov 05, 2026
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RESIDENT REQUESTS VIEW -->
+        <div id="view-requests" class="view-section hidden">
+            <header class="mb-8">
+                <h2 class="text-3xl font-bold text-white mb-1">Submit a Request</h2>
+                <p class="text-slate-400 text-sm">Report issues or file complaints regarding the water system.</p>
+            </header>
+            <div class="glass-panel p-8 rounded-2xl shadow-lg max-w-2xl">
+                <form id="complaint-form" class="space-y-6">
+                    <div class="relative input-floating">
+                        <input type="text" id="req-title" required class="w-full bg-slate-800/50 border border-slate-600 rounded-xl px-4 py-3.5 text-white focus:outline-none focus:border-cyan-400 transition-all peer" placeholder=" ">
+                        <label for="req-title" class="absolute left-4 top-3.5 text-slate-400 transition-all pointer-events-none">Subject / Issue Title</label>
+                    </div>
+                    <div class="relative input-floating">
+                        <textarea id="req-desc" required rows="4" class="w-full bg-slate-800/50 border border-slate-600 rounded-xl px-4 py-3.5 text-white focus:outline-none focus:border-cyan-400 transition-all peer resize-none" placeholder=" "></textarea>
+                        <label for="req-desc" class="absolute left-4 top-3.5 text-slate-400 transition-all pointer-events-none">Describe the issue...</label>
+                    </div>
+                    <button type="submit" class="bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3.5 px-6 rounded-xl shadow-lg w-full transition-all">Submit Request</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- STAFF INBOX VIEW -->
+        <div id="view-inbox" class="view-section hidden">
+            <header class="mb-8">
+                <h2 class="text-3xl font-bold text-white mb-1">Staff Inbox</h2>
+                <p class="text-slate-400 text-sm">Manage resident requests and system alerts.</p>
+            </header>
+            <div class="space-y-4">
+                <!-- Message 1 -->
+                <div class="glass-panel p-5 rounded-xl border-l-4 border-l-red-500 hover:bg-slate-800/50 transition-colors cursor-pointer flex justify-between items-center">
+                    <div>
+                        <div class="flex items-center gap-3 mb-1">
+                            <span class="bg-red-500/20 text-red-400 text-xs font-bold px-2 py-0.5 rounded">URGENT</span>
+                            <h4 class="text-white font-bold">Low Pressure on 4th Floor</h4>
+                        </div>
+                        <p class="text-slate-400 text-sm">Reported by: Apt 402 • 2 hours ago</p>
+                    </div>
+                    <button class="text-cyan-400 hover:text-white px-4 py-2 border border-cyan-500/30 rounded-lg text-sm">Resolve</button>
+                </div>
+                <!-- Message 2 -->
+                <div class="glass-panel p-5 rounded-xl border-l-4 border-l-slate-500 hover:bg-slate-800/50 transition-colors cursor-pointer flex justify-between items-center">
+                    <div>
+                        <div class="flex items-center gap-3 mb-1">
+                            <span class="bg-slate-700 text-slate-300 text-xs font-bold px-2 py-0.5 rounded">QUERY</span>
+                            <h4 class="text-white font-bold">Next filter cleaning schedule?</h4>
+                        </div>
+                        <p class="text-slate-400 text-sm">Reported by: Apt 105 • Yesterday</p>
+                    </div>
+                    <button class="text-cyan-400 hover:text-white px-4 py-2 border border-cyan-500/30 rounded-lg text-sm">Reply</button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // Ensure DOM is fully loaded before attaching event listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            let currentRole = null;
+            let waterChart = null;
+            let chartData = JSON.parse(localStorage.getItem('aquatrack_chart') || 'null') || [120000, 115000, 108000, 134000, 128000, 122000, 123000];
+            let waterLogs = JSON.parse(localStorage.getItem('aquatrack_logs') || '[]');
+            let maintenanceLogs = JSON.parse(localStorage.getItem('aquatrack_maintenance') || '[]');
+            let requests = JSON.parse(localStorage.getItem('aquatrack_requests') || '[]');
+            const persist = () => { localStorage.setItem('aquatrack_chart', JSON.stringify(chartData)); localStorage.setItem('aquatrack_logs', JSON.stringify(waterLogs)); localStorage.setItem('aquatrack_maintenance', JSON.stringify(maintenanceLogs)); localStorage.setItem('aquatrack_requests', JSON.stringify(requests)); };
+            const escapeHTML = value => String(value).replace(/[&<>\"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c])); 
+
+            // --- Authentication Buttons ---
+            document.getElementById('btn-resident').addEventListener('click', () => login('resident'));
+            document.getElementById('btn-staff').addEventListener('click', () => login('staff'));
+            document.getElementById('btn-logout').addEventListener('click', logout);
+
+            function login(role) {
+                currentRole = role;
+                document.getElementById('login-view').classList.add('hidden');
+                document.getElementById('main-sidebar').classList.remove('hidden');
+                document.getElementById('main-content').classList.remove('hidden');
+                
+                document.getElementById('profile-name').innerText = role === 'staff' ? 'System Admin' : 'Resident (Apt 402)';
+                
+                if (role === 'staff') {
+                    document.querySelectorAll('.staff-only').forEach(el => el.classList.remove('hidden'));
+                    document.querySelectorAll('.resident-only').forEach(el => el.classList.add('hidden'));
+                    document.getElementById('chart-panel').classList.remove('lg:col-span-3');
+                    document.getElementById('chart-panel').classList.add('lg:col-span-2');
+                } else {
+                    document.querySelectorAll('.staff-only').forEach(el => el.classList.add('hidden'));
+                    document.querySelectorAll('.resident-only').forEach(el => el.classList.remove('hidden'));
+                    document.getElementById('chart-panel').classList.remove('lg:col-span-2');
+                    document.getElementById('chart-panel').classList.add('lg:col-span-3');
+                }
+                showToast(`Demo session opened as ${role.toUpperCase()}. Browser storage is active.`, 'success');
+                renderSavedData();
+                
+                // Initialize chart only after layout is visible
+                setTimeout(initChart, 150);
+            }
+
+            function logout() {
+                currentRole = null;
+                document.getElementById('login-view').classList.remove('hidden');
+                document.getElementById('main-sidebar').classList.add('hidden');
+                document.getElementById('main-content').classList.add('hidden');
+                
+                // Reset views to default Dashboard
+                document.querySelector('[data-target="dashboard"]').click();
+            }
+
+            // --- Toast Notification System ---
+            function showToast(message, type = 'success') {
+                const container = document.getElementById('toast-container');
+                const toast = document.createElement('div');
+                const isSuccess = type === 'success';
+                toast.className = `toast-enter flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border backdrop-blur-md text-white font-medium ${isSuccess ? 'bg-emerald-900/80 border-emerald-500/30' : 'bg-red-900/80 border-red-500/30'}`;
+                toast.innerHTML = `<i data-lucide="${isSuccess ? 'check-circle' : 'alert-circle'}" class="w-5 h-5 ${isSuccess ? 'text-emerald-400' : 'text-red-400'}"></i><span>${message}</span>`;
+                container.appendChild(toast);
+                lucide.createIcons({ root: toast });
+                setTimeout(() => { toast.classList.replace('toast-enter', 'toast-exit'); setTimeout(() => toast.remove(), 300); }, 3000);
+            }
+
+            // --- View Switching ---
+            const navLinks = document.querySelectorAll('.nav-link');
+            const views = {
+                'dashboard': document.getElementById('view-dashboard'),
+                'water-levels': document.getElementById('view-water-levels'),
+                'maintenance': document.getElementById('view-maintenance'),
+                'requests': document.getElementById('view-requests'),
+                'inbox': document.getElementById('view-inbox')
+            };
+
+            navLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault(); 
+                    navLinks.forEach(l => {
+                        if(!l.classList.contains('resident-only') && !l.classList.contains('staff-only')) {
+                            l.className = "nav-link flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800/80 rounded-lg transition-all";
+                        } else if (l.classList.contains('resident-only')) {
+                            l.className = "nav-link resident-only flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800/80 rounded-lg transition-all " + (currentRole === 'resident' ? '' : 'hidden');
+                        } else {
+                            l.className = "nav-link staff-only flex items-center justify-between px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800/80 rounded-lg transition-all " + (currentRole === 'staff' ? '' : 'hidden');
+                        }
+                    });
+                    
+                    let targetId = e.currentTarget.getAttribute('data-target');
+                    
+                    if(targetId === 'inbox' || targetId === 'requests') {
+                        e.currentTarget.classList.add('bg-cyan-900/40', 'text-cyan-400', 'border', 'border-cyan-500/30', 'shadow-[0_0_15px_rgba(6,182,212,0.15)]');
+                        e.currentTarget.classList.remove('text-slate-400');
+                    } else {
+                        e.currentTarget.className = "nav-link active flex items-center gap-3 px-4 py-3 bg-cyan-900/40 text-cyan-400 rounded-lg border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.15)] transition-all";
+                    }
+
+                    Object.values(views).forEach(view => { view.classList.add('hidden'); view.classList.remove('block'); });
+                    if (views[targetId]) { views[targetId].classList.remove('hidden'); views[targetId].classList.add('block'); }
+                });
+            });
+
+            function renderSavedData() {
+                const tableBody = document.getElementById('water-log-table');
+                if (tableBody) {
+                    tableBody.innerHTML = waterLogs.map(x => `<tr class="hover:bg-slate-800/30"><td class="p-4 text-slate-300">${escapeHTML(x.time)}</td><td class="p-4 text-white font-medium">${x.level}</td><td class="p-4 text-blue-400">${x.percentage}%</td><td class="p-4 text-slate-400">${escapeHTML(x.by)}</td></tr>`).join('');
+                }
+                const grid = document.getElementById('maintenance-grid');
+                if (grid && maintenanceLogs.length) grid.insertAdjacentHTML('afterbegin', maintenanceLogs.map(x => `<div class="glass-panel p-6 rounded-2xl shadow-lg border-l-4 border-l-emerald-500"><h3 class="text-lg font-bold text-white">${escapeHTML(x.task)}</h3><p class="text-slate-400 text-sm">${escapeHTML(x.time)}</p><p class="text-slate-300 text-sm mt-3">Manual demo log entry.</p></div>`).join(''));
+                if (waterLogs.length) {
+                    const latest = waterLogs[0];
+                    document.getElementById('current-level-text').innerHTML = `${latest.percentage}<span class="text-xl text-blue-400">%</span>`;
+                    document.getElementById('level-bar').style.width = `${latest.percentage}%`;
+                }
+            }
+
+            // --- Chart Logic ---
+            function initChart() {
+                if (waterChart) waterChart.destroy();
+                const canvas = document.getElementById('waterChart');
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+                const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+                gradient.addColorStop(0, 'rgba(34, 211, 238, 0.4)');
+                gradient.addColorStop(1, 'rgba(34, 211, 238, 0.0)');
+                waterChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Today'],
+                        datasets: [{
+                            label: 'Volume (L)', data: [...chartData], borderColor: '#22d3ee', backgroundColor: gradient,
+                            borderWidth: 3, pointBackgroundColor: '#0f172a', pointBorderColor: '#22d3ee', pointBorderWidth: 2,
+                            pointRadius: 4, pointHoverRadius: 6, fill: true, tension: 0.4
+                        }]
+                    },
+                    options: { 
+                        responsive: true, maintainAspectRatio: false, 
+                        plugins: { legend: { display: false }, tooltip: { backgroundColor: 'rgba(15, 23, 42, 0.9)', titleColor: '#94a3b8', bodyColor: '#fff', borderColor: 'rgba(34, 211, 238, 0.2)', borderWidth: 1, padding: 12, displayColors: false } }, 
+                        scales: { y: { grid: { color: 'rgba(255,255,255,0.05)', drawBorder: false }, ticks: { color: '#64748b' }, min: 50000, max: 150000 }, x: { grid: { display: false }, ticks: { color: '#64748b' } } },
+                        interaction: { intersect: false, mode: 'index' }
+                    }
+                });
+            }
+
+            // --- Functional Features ---
+            const updateForm = document.getElementById('update-form');
+            if(updateForm) {
+                updateForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const level = parseInt(document.getElementById('level').value);
+                    if (isNaN(level) || level < 0 || level > 150000) { showToast(`Volume must be 0 - 150000 L`, 'error'); return; }
+                    
+                    const btn = this.querySelector('button');
+                    const originalText = btn.innerHTML;
+                    btn.innerHTML = `<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i> Saving...`;
+                    lucide.createIcons({ root: btn });
+                    btn.disabled = true;
+
+                    setTimeout(() => {
+                        const percentage = Math.round((level / 150000) * 100);
+                        document.getElementById('current-level-text').innerHTML = `${percentage}<span class="text-xl text-blue-400">%</span>`;
+                        document.getElementById('level-bar').style.width = `${percentage}%`;
+
+                        chartData.shift(); chartData.push(level); persist(); 
+                        waterChart.data.datasets[0].data = [...chartData]; waterChart.update();
+
+                        waterLogs.unshift({time: new Date().toLocaleString(), level, percentage, by: currentRole === 'staff' ? 'System Admin (demo)' : 'Resident (demo)'});
+                        waterLogs = waterLogs.slice(0, 100);
+                        persist(); renderSavedData();
+
+                        document.getElementById('level').value = ''; document.getElementById('notes').value = '';
+                        btn.innerHTML = originalText; btn.disabled = false; lucide.createIcons({ root: btn });
+                        showToast('Saved in this browser (demo storage).');
+                    }, 800);
+                });
+            }
+
+            const exportBtn = document.getElementById('export-csv-btn');
+            if(exportBtn) {
+                exportBtn.addEventListener('click', () => {
+                    let csvContent = "data:text/csv;charset=utf-8,Date & Time,Volume (L),Capacity %,Logged By\n";
+                    const rows = document.querySelectorAll("#water-log-table tr");
+                    rows.forEach(row => {
+                        const cols = row.querySelectorAll("td");
+                        let rowData = [];
+                        cols.forEach(c => rowData.push(`"${c.innerText}"`));
+                        csvContent += rowData.join(",") + "\n";
+                    });
+                    const encodedUri = encodeURI(csvContent);
+                    const link = document.createElement("a");
+                    link.setAttribute("href", encodedUri);
+                    link.setAttribute("download", "aquatrack_logs.csv");
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    showToast("CSV Exported successfully!");
+                });
+            }
+
+            const logServiceBtn = document.getElementById('log-service-btn');
+            if(logServiceBtn) {
+                logServiceBtn.addEventListener('click', () => {
+                    const task = prompt("Enter the service or maintenance task performed:");
+                    if(task) {
+                        maintenanceLogs.unshift({task, time: new Date().toLocaleString()}); persist();
+                        const grid = document.getElementById('maintenance-grid');
+                        const newCard = `
+                        <div class="glass-panel p-6 rounded-2xl shadow-lg border-l-4 border-l-emerald-500 view-section">
+                            <div class="flex justify-between items-start mb-4">
+                                <div><h3 class="text-lg font-bold text-white">${escapeHTML(task)}</h3><p class="text-slate-400 text-sm">Just Now • Today</p></div>
+                                <span class="px-3 py-1 bg-emerald-500/10 text-emerald-400 text-xs font-bold rounded-full border border-emerald-500/20">COMPLETED</span>
+                            </div>
+                            <p class="text-slate-300 text-sm mb-4">Manual log entry by System Admin.</p>
+                            <div class="flex items-center gap-2 text-sm text-slate-400"><i data-lucide="user" class="w-4 h-4"></i> Tech: System Admin</div>
+                        </div>`;
+                        grid.insertAdjacentHTML('afterbegin', newCard);
+                        lucide.createIcons();
+                        showToast('Maintenance saved in this browser (demo storage).');
+                    }
+                });
+            }
+
+            const complaintForm = document.getElementById('complaint-form');
+            if(complaintForm) {
+                complaintForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const formData = new FormData(e.target);
+                    requests.unshift({time: new Date().toLocaleString(), fields: Object.fromEntries(formData.entries())}); persist();
+                    e.target.reset();
+                    showToast('Request saved in this browser (demo storage).');
+                });
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+# Render Blueprint: Dashboard > New > Blueprint > pick this repo. Secrets marked sync:false are typed in the dashboard.
+services:
+  - type: web
+    name: aquatrack-api
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.3
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: CRON_SECRET
+        sync: false
